@@ -96,6 +96,7 @@ struct recv_reorder_ctrl
 	u16 indicate_seq;//=wstart_b, init_value=0xffff
 	u16 wend_b;
 	u8 wsize_b;
+	u8 ampdu_size;
 	_queue pending_recvframe_queue;
 	_timer reordering_ctrl_timer;
 };
@@ -254,8 +255,12 @@ struct rx_pkt_attrib	{
 	u8 	key_index;
 
 	u8	data_rate;
+	u8	bw;
+	u8	stbc;
+	u8	ldpc;
 	u8 	sgi;
 	u8 	pkt_rpt_type;
+	u32 tsfl;
 	u32	MacIDValidEntry[2];	// 64 bits present 64 entry.
 
 /*
@@ -265,7 +270,7 @@ struct rx_pkt_attrib	{
 	u32	RxPWDBAll;	
 	s32	RecvSignalPower;
 */
-	struct phy_info phy_info;	
+	struct phy_info phy_info;
 };
 
 
@@ -278,7 +283,16 @@ struct rx_pkt_attrib	{
 
 #define RECVBUFF_ALIGN_SZ 8
 
+#if defined (CONFIG_RTL8192E)
+	#ifdef CONFIG_PCI_HCI
+		#define RXDESC_SIZE 16
+		#define RX_WIFI_INFO_SIZE	24
+	#else
+		#define RXDESC_SIZE	24
+	#endif
+#else
 #define RXDESC_SIZE	24
+#endif
 #define RXDESC_OFFSET RXDESC_SIZE
 
 struct recv_stat
@@ -287,10 +301,13 @@ struct recv_stat
 
 	unsigned int rxdw1;
 
+#if !(defined(CONFIG_RTL8192E) && defined(CONFIG_PCI_HCI)) //exclude 8192ee
 	unsigned int rxdw2;
 
 	unsigned int rxdw3;
+#endif
 
+#ifndef BUF_DESC_ARCH
 	unsigned int rxdw4;
 
 	unsigned int rxdw5;
@@ -300,6 +317,7 @@ struct recv_stat
 
 	unsigned int rxdw7;
 #endif
+#endif //if BUF_DESC_ARCH is defined, rx_buf_desc occupy 4 double words
 };
 
 #define EOR BIT(30)
@@ -371,7 +389,7 @@ struct recv_priv
 	//u8 *pallocated_urb_buf;
 	_sema allrxreturnevt;
 	uint	ff_hwaddr;
-	u8	rx_pending_cnt;
+	ATOMIC_T	rx_pending_cnt;
 
 #ifdef CONFIG_USB_INTERRUPT_IN_PIPE
 #ifdef PLATFORM_LINUX
@@ -397,9 +415,6 @@ struct recv_priv
 	struct ifqueue rx_indicate_queue;
 #endif	// CONFIG_RX_INDICATE_QUEUE
 
-#ifdef CONFIG_USE_USB_BUFFER_ALLOC_RX
-	_queue	recv_buf_pending_queue;
-#endif	// CONFIG_USE_USB_BUFFER_ALLOC_RX
 #endif //defined(PLATFORM_LINUX) || defined(PLATFORM_FREEBSD)
 
 	u8 *pallocated_recv_buf;
@@ -407,7 +422,7 @@ struct recv_priv
 	_queue	free_recv_buf_queue;
 	u32	free_recv_buf_queue_cnt;
 
-#if defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI)
+#if defined(CONFIG_SDIO_HCI) || defined(CONFIG_GSPI_HCI) || defined(CONFIG_USB_HCI) 
 	_queue	recv_buf_pending_queue;
 #endif
 
@@ -429,7 +444,7 @@ struct recv_priv
 	struct rx_raw_rssi raw_rssi_info;
 	#endif
 	//s8 rxpwdb;	
-	u8 noise;	
+	s16 noise;	
 	//int RxSNRdB[2];
 	//s8 RxRssi[2];
 	//int FalseAlmCnt_all;
@@ -445,7 +460,7 @@ struct recv_priv
 	struct smooth_rssi_data signal_qual_data;
 	struct smooth_rssi_data signal_strength_data;
 #endif //CONFIG_NEW_SIGNAL_STAT_PROCESS
-
+	u16 sink_udpport,pre_rtp_rxseq,cur_rtp_rxseq;
 };
 
 #ifdef CONFIG_NEW_SIGNAL_STAT_PROCESS
@@ -511,11 +526,9 @@ struct recv_buf
 
 #ifdef PLATFORM_LINUX
 	_pkt	*pskb;
-	u8	reuse;
 #endif
 #ifdef PLATFORM_FREEBSD //skb solution
 	struct sk_buff *pskb;
-	u8	reuse;
 #endif //PLATFORM_FREEBSD //skb solution
 };
 
@@ -617,6 +630,8 @@ sint rtw_enqueue_recvbuf(struct recv_buf *precvbuf, _queue *queue);
 struct recv_buf *rtw_dequeue_recvbuf (_queue *queue);
 
 void rtw_reordering_ctrl_timeout_handler(void *pcontext);
+
+void rx_query_phy_status(union recv_frame *rframe, u8 *phy_stat);
 
 __inline static u8 *get_rxmem(union recv_frame *precvframe)
 {
@@ -825,9 +840,14 @@ __inline static s32 translate_percentage_to_dbm(u32 SignalStrengthIndex)
 {
 	s32	SignalPower; // in dBm.
 
+#ifdef CONFIG_SKIP_SIGNAL_SCALE_MAPPING
+	// Translate to dBm (x=y-100)
+	SignalPower = SignalStrengthIndex - 100;
+#else
 	// Translate to dBm (x=0.5y-95).
 	SignalPower = (s32)((SignalStrengthIndex + 1) >> 1); 
 	SignalPower -= 95; 
+#endif
 
 	return SignalPower;
 }

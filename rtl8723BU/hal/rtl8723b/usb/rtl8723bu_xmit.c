@@ -39,22 +39,6 @@ void	rtl8723bu_free_xmit_priv(_adapter *padapter)
 {
 }
 
-static void do_queue_select(_adapter	*padapter, struct pkt_attrib *pattrib)
-{
-	u8 qsel;
-		
-	qsel = pattrib->priority;
-	RT_TRACE(_module_rtl871x_xmit_c_,_drv_info_,("### do_queue_select priority=%d ,qsel = %d\n",pattrib->priority ,qsel));
-
-#ifdef CONFIG_CONCURRENT_MODE	
-	if (check_fwstate(&padapter->mlmepriv, WIFI_AP_STATE) == _TRUE)
-		qsel = 7;//
-#endif
-	
-	pattrib->qsel = qsel;
-}
-
-
 void _dbg_dump_tx_info(_adapter	*padapter,int frame_tag,struct tx_desc *ptxdesc)
 {
 	u8 bDumpTxPkt;
@@ -198,7 +182,6 @@ static s32 update_txdesc(struct xmit_frame *pxmitframe, u8 *pmem, s32 sz, u8 bag
 	struct mlme_priv	*pmlmepriv = &padapter->mlmepriv;		
 	struct pkt_attrib	*pattrib = &pxmitframe->attrib;
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
-	struct dm_priv	*pdmpriv = &pHalData->dmpriv;
 
 	struct ht_priv		*phtpriv = &pmlmepriv->htpriv;
 	struct mlme_ext_priv	*pmlmeext = &padapter->mlmeextpriv;
@@ -540,6 +523,9 @@ s32 rtl8723bu_xmitframe_complete(_adapter *padapter, struct xmit_priv *pxmitpriv
 		pxmitframe = LIST_CONTAINOR(xmitframe_plist, struct xmit_frame, list);
 		xmitframe_plist = get_next(xmitframe_plist);
 
+		if(_FAIL == rtw_hal_busagg_qsel_check(padapter,pfirstframe->attrib.qsel,pxmitframe->attrib.qsel))
+			break;
+		
 		len = xmitframe_need_length(pxmitframe) + TXDESC_SIZE; // no offset
 		if (pbuf + len > MAX_XMITBUF_SZ) break;
 
@@ -761,52 +747,7 @@ static s32 pre_xmitframe(_adapter *padapter, struct xmit_frame *pxmitframe)
 	//HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
 #endif
 
-	do_queue_select(padapter, pattrib);
-	
 	_enter_critical_bh(&pxmitpriv->lock, &irqL);
-
-#ifndef CONFIG_TDLS
-#ifdef CONFIG_AP_MODE
-	if(xmitframe_enqueue_for_sleeping_sta(padapter, pxmitframe) == _TRUE)
-	{
-		struct sta_info *psta;
-		struct sta_priv *pstapriv = &padapter->stapriv;
-
-	
-		_exit_critical_bh(&pxmitpriv->lock, &irqL);
-
-		if(pattrib->psta)
-		{
-			psta = pattrib->psta;
-		}
-		else
-		{
-			psta=rtw_get_stainfo(pstapriv, pattrib->ra);
-		}
-
-		if(psta)
-		{
-			if(psta->sleepq_len > (NR_XMITFRAME>>3))
-			{
-				wakeup_sta_to_xmit(padapter, psta);
-			}	
-		}	
-
-		return _FALSE;
-	}
-#endif
-//else CONFIG_TDLS, process as TDLS Buffer STA
-#else
-	if(pmlmeinfo->tdls_setup_state&TDLS_LINKED_STATE ){	//&& pattrib->ether_type!=0x0806)
-		res = xmit_tdls_enqueue_for_sleeping_sta(padapter, pxmitframe);
-		if(res==_TRUE){
-			_exit_critical_bh(&pxmitpriv->lock, &irqL);
-			return _FALSE;
-		}else if(res==2){
-			goto enqueue;
-		}
-	}
-#endif
 
 	if (rtw_txframes_sta_ac_pending(padapter, pattrib) > 0)
 		goto enqueue;
@@ -980,7 +921,7 @@ s32 rtl8723bu_hostap_mgnt_xmit_entry(_adapter *padapter, _pkt *pkt)
 	ptxdesc->txdw3 |= cpu_to_le32((8 <<28)); //set bit3 to 1. Suugested by TimChen. 2009.12.29.
 	
 
-	rtl8192cu_cal_txdesc_chksum(ptxdesc);
+	rtl8723b_cal_txdesc_chksum(ptxdesc);
 	// ----- end of fill tx desc -----
 
 	//
@@ -998,7 +939,7 @@ s32 rtl8723bu_hostap_mgnt_xmit_entry(_adapter *padapter, _pkt *pkt)
 	pipe = usb_sndbulkpipe(pdvobj->pusbdev, pHalData->Queue2EPNum[(u8)MGT_QUEUE_INX]&0x0f);
 	
 	usb_fill_bulk_urb(urb, pdvobj->pusbdev, pipe,
-			  pxmit_skb->data, pxmit_skb->len, rtl8192cu_hostap_mgnt_xmit_cb, pxmit_skb);
+			  pxmit_skb->data, pxmit_skb->len, rtl8723bu_hostap_mgnt_xmit_cb, pxmit_skb);
 	
 	urb->transfer_flags |= URB_ZERO_PACKET;
 	usb_anchor_urb(urb, &phostapdpriv->anchored);
