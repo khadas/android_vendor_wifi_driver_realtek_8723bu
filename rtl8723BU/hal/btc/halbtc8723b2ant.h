@@ -77,13 +77,11 @@ struct coex_dm_8723b_2ant {
 	u8		cur_fw_dac_swing_lvl;
 	boolean		cur_ignore_wlan_act;
 	boolean		pre_ignore_wlan_act;
-	u8		pre_ps_tdma;
 	u8		cur_ps_tdma;
 	u8		ps_tdma_para[5];
 	u8		ps_tdma_du_adj_type;
 	boolean		reset_tdma_adjust;
 	boolean		auto_tdma_adjust;
-	boolean		pre_ps_tdma_on;
 	boolean		cur_ps_tdma_on;
 	boolean		pre_bt_auto_report;
 	boolean		cur_bt_auto_report;
@@ -102,13 +100,9 @@ struct coex_dm_8723b_2ant {
 	boolean		cur_adc_back_off;
 	boolean	pre_agc_table_en;
 	boolean		cur_agc_table_en;
-	u32		pre_val0x6c0;
 	u32		cur_val0x6c0;
-	u32		pre_val0x6c4;
 	u32		cur_val0x6c4;
-	u32		pre_val0x6c8;
 	u32		cur_val0x6c8;
-	u8		pre_val0x6cc;
 	u8		cur_val0x6cc;
 	boolean		limited_dig;
 
@@ -128,6 +122,7 @@ struct coex_dm_8723b_2ant {
 
 	boolean		is_switch_to_1dot5_ant;
 	u8		switch_thres_offset;
+	u32		setting_tdma;
 };
 
 struct coex_sta_8723b_2ant {
@@ -140,6 +135,7 @@ struct coex_sta_8723b_2ant {
 	boolean					bt_abnormal_scan;
 	boolean					under_lps;
 	boolean					under_ips;
+	u8					connect_ap_period_cnt;
 	u32					high_priority_tx;
 	u32					high_priority_rx;
 	u32					low_priority_tx;

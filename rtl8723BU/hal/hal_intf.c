@@ -894,6 +894,9 @@ s32 c2h_handler(_adapter *adapter, u8 id, u8 seq, u8 plen, u8 *payload)
 #if defined(CONFIG_TDLS) && defined(CONFIG_TDLS_CH_SW)
 	case C2H_FW_CHNL_SWITCH_COMPLETE:
 		rtw_tdls_chsw_oper_done(adapter);
+#if defined(CONFIG_PCI_HCI)
+		rtw_hal_read_rfreg(adapter, 0, 0x18, 0xffffffff);
+#endif
 		break;
 	case C2H_BCN_EARLY_RPT:
 		rtw_tdls_ch_sw_back_to_base_chnl(adapter);

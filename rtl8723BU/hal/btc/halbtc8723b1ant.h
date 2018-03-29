@@ -115,13 +115,9 @@ struct coex_dm_8723b_1ant {
 	/* sw mechanism */
 	boolean	pre_low_penalty_ra;
 	boolean		cur_low_penalty_ra;
-	u32		pre_val0x6c0;
 	u32		cur_val0x6c0;
-	u32		pre_val0x6c4;
 	u32		cur_val0x6c4;
-	u32		pre_val0x6c8;
 	u32		cur_val0x6c8;
-	u8		pre_val0x6cc;
 	u8		cur_val0x6cc;
 
 	u32		backup_arfr_cnt1;	/* Auto Rate Fallback Retry cnt */
@@ -144,6 +140,7 @@ struct coex_dm_8723b_1ant {
 	u32		arp_cnt;
 
 	u8		error_condition;
+	u32		setting_tdma;
 };
 
 struct coex_sta_8723b_1ant {
@@ -161,6 +158,7 @@ struct coex_sta_8723b_1ant {
 	boolean					under_lps;
 	boolean					under_ips;
 	u32					specific_pkt_period_cnt;
+	u8					connect_ap_period_cnt;
 	u32					high_priority_tx;
 	u32					high_priority_rx;
 	u32					low_priority_tx;

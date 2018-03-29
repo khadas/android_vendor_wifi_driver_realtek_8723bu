@@ -3231,6 +3231,15 @@ netdev_open_normal_process:
 	}
 #endif
 
+#ifdef CONFIG_RTW_CFGVEDNOR_LLSTATS
+	pwrctrlpriv->radio_on_start_time = rtw_get_current_time();
+	pwrctrlpriv->pwr_saving_start_time = rtw_get_current_time();
+	pwrctrlpriv->pwr_saving_time = 0;
+	pwrctrlpriv->on_time = 0;
+	pwrctrlpriv->tx_time = 0;
+	pwrctrlpriv->rx_time = 0;
+#endif /* CONFIG_RTW_CFGVEDNOR_LLSTATS */
+
 	RTW_INFO("-871x_drv - drv_open, bup=%d\n", padapter->bup);
 
 	return 0;
@@ -3657,7 +3666,11 @@ restart:
 
 		oldfs = get_fs();
 		set_fs(KERNEL_DS);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0))
+		err = sock_recvmsg(sock, &msg, MSG_DONTWAIT);
+#else
 		err = sock_recvmsg(sock, &msg, PAGE_SIZE, MSG_DONTWAIT);
+#endif
 		set_fs(oldfs);
 
 		if (err < 0)

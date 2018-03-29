@@ -959,6 +959,7 @@ static int wpa_set_encryption(struct net_device *dev, struct ieee_param *param, 
 
 		psecuritypriv->key_mask |= BIT(wep_key_idx);
 
+		padapter->mlmeextpriv.mlmext_info.key_index = wep_key_idx;
 		goto exit;
 	}
 
