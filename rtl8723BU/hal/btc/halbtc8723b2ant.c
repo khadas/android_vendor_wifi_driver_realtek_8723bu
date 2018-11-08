@@ -3344,7 +3344,7 @@ void halbtc8723b2ant_action_a2dp(IN struct btc_coexist *btcoexist)
 		halbtc8723b2ant_dec_bt_pwr(btcoexist, NORMAL_EXEC, 0);
 
 
-		halbtc8723b2ant_coex_table_with_type(btcoexist, NORMAL_EXEC, 16);
+	halbtc8723b2ant_coex_table_with_type(btcoexist, NORMAL_EXEC, 16);
 
 	if (coex_sta->connect_ap_period_cnt > 0)
 		halbtc8723b2ant_ps_tdma(btcoexist, NORMAL_EXEC, true, 31);
