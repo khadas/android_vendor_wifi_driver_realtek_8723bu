@@ -9761,6 +9761,12 @@ u8 SetHwReg(_adapter *adapter, u8 variable, u8 *val)
 		rtw_hal_set_msr(adapter, net_type);
 	}
 	break;
+	case HW_VAR_DO_IQK:
+		if (*val)
+			hal_data->bNeedIQK = _TRUE;
+		else
+			hal_data->bNeedIQK = _FALSE;
+		break;
 	case HW_VAR_MAC_ADDR:
 #ifdef CONFIG_MI_WITH_MBSSID_CAM
 		rtw_hal_set_macaddr_mbid(adapter, val);

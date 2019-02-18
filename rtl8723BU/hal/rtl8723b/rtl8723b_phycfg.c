@@ -1226,6 +1226,16 @@ phy_SwChnlAndSetBwMode8723B(
 		pHalData->bSetChnlBW = _FALSE;
 	}
 
+	if (pHalData->bNeedIQK == _TRUE) {
+		if (pHalData->neediqk_24g == _TRUE) {
+
+			halrf_iqk_trigger(&pHalData->odmpriv, _FALSE);
+			pHalData->bIQKInitialized = _TRUE;
+			pHalData->neediqk_24g = _FALSE;
+		}
+		pHalData->bNeedIQK = _FALSE;
+	}
+
 	PHY_SetTxPowerLevel8723B(Adapter, pHalData->current_channel);
 }
 

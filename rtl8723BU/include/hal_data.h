@@ -539,6 +539,7 @@ typedef struct hal_com_data {
 	u64			bk_rf_ability;
 	u8			bIQKInitialized;
 	u8			bNeedIQK;
+	u8			neediqk_24g;
 	u8			IQK_MP_Switch;
 	u8			bScanInProcess;
 	/******** PHY DM & DM Section **********/

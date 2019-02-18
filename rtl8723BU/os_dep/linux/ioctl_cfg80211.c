@@ -3008,13 +3008,14 @@ static int cfg80211_rtw_leave_ibss(struct wiphy *wiphy, struct net_device *ndev)
 {
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(ndev);
 	struct wireless_dev *rtw_wdev = padapter->rtw_wdev;
-	struct rtw_wdev_priv *pwdev_priv = adapter_wdev_data(padapter);
 	enum nl80211_iftype old_type;
 	int ret = 0;
 
 	RTW_INFO(FUNC_NDEV_FMT"\n", FUNC_NDEV_ARG(ndev));
 
-	rtw_wdev_set_not_indic_disco(pwdev_priv, 1);
+#if (RTW_CFG80211_BLOCK_STA_DISCON_EVENT & RTW_CFG80211_BLOCK_DISCON_WHEN_DISCONNECT)
+	rtw_wdev_set_not_indic_disco(adapter_wdev_data(padapter), 1);
+#endif
 
 	old_type = rtw_wdev->iftype;
 
@@ -3031,11 +3032,13 @@ static int cfg80211_rtw_leave_ibss(struct wiphy *wiphy, struct net_device *ndev)
 			ret = -EPERM;
 			goto leave_ibss;
 		}
-		rtw_setopmode_cmd(padapter, Ndis802_11Infrastructure, _TRUE);
+		rtw_setopmode_cmd(padapter, Ndis802_11Infrastructure, RTW_CMDF_WAIT_ACK);
 	}
 
 leave_ibss:
-	rtw_wdev_set_not_indic_disco(pwdev_priv, 0);
+#if (RTW_CFG80211_BLOCK_STA_DISCON_EVENT & RTW_CFG80211_BLOCK_DISCON_WHEN_DISCONNECT)
+	rtw_wdev_set_not_indic_disco(adapter_wdev_data(padapter), 0);
+#endif
 
 	return 0;
 }
@@ -3060,12 +3063,13 @@ static int cfg80211_rtw_connect(struct wiphy *wiphy, struct net_device *ndev,
 	struct rtw_wdev_priv *pwdev_priv = adapter_wdev_data(padapter);
 	_irqL irqL;
 
+#if (RTW_CFG80211_BLOCK_STA_DISCON_EVENT & RTW_CFG80211_BLOCK_DISCON_WHEN_CONNECT)
 	rtw_wdev_set_not_indic_disco(pwdev_priv, 1);
+#endif
 
 	RTW_INFO("=>"FUNC_NDEV_FMT" - Start to Connection\n", FUNC_NDEV_ARG(ndev));
 	RTW_INFO("privacy=%d, key=%p, key_len=%d, key_idx=%d, auth_type=%d\n",
 		sme->privacy, sme->key, sme->key_len, sme->key_idx, sme->auth_type);
-
 
 	if (pwdev_priv->block == _TRUE) {
 		ret = -EBUSY;
@@ -3286,7 +3290,9 @@ cancel_ps_deny:
 exit:
 	RTW_INFO("<=%s, ret %d\n", __FUNCTION__, ret);
 
+#if (RTW_CFG80211_BLOCK_STA_DISCON_EVENT & RTW_CFG80211_BLOCK_DISCON_WHEN_CONNECT)
 	rtw_wdev_set_not_indic_disco(pwdev_priv, 0);
+#endif
 
 	return ret;
 }
@@ -3295,14 +3301,15 @@ static int cfg80211_rtw_disconnect(struct wiphy *wiphy, struct net_device *ndev,
 				   u16 reason_code)
 {
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(ndev);
-	struct rtw_wdev_priv *pwdev_priv = adapter_wdev_data(padapter);
 
 	RTW_INFO(FUNC_NDEV_FMT" - Start to Disconnect\n", FUNC_NDEV_ARG(ndev));
 
+#if (RTW_CFG80211_BLOCK_STA_DISCON_EVENT & RTW_CFG80211_BLOCK_DISCON_WHEN_DISCONNECT)
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
 	if (!wiphy->dev.power.is_prepared)
 #endif
-		rtw_wdev_set_not_indic_disco(pwdev_priv, 1);
+		rtw_wdev_set_not_indic_disco(adapter_wdev_data(padapter), 1);
+#endif
 
 	rtw_set_to_roam(padapter, 0);
 
@@ -3317,12 +3324,25 @@ static int cfg80211_rtw_disconnect(struct wiphy *wiphy, struct net_device *ndev,
 		RTW_INFO("%s...call rtw_indicate_disconnect\n", __func__);
 
 		rtw_free_assoc_resources(padapter, 1);
+
+		/* indicate locally_generated = 0 when suspend */
+		#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0))
 		rtw_indicate_disconnect(padapter, 0, wiphy->dev.power.is_prepared ? _FALSE : _TRUE);
+		#else
+		/*
+		* for kernel < 4.2, DISCONNECT event is hardcoded with
+		* NL80211_ATTR_DISCONNECTED_BY_AP=1 in NL80211 layer
+		* no need to judge if under suspend
+		*/
+		rtw_indicate_disconnect(padapter, 0, _TRUE);
+		#endif
 
 		rtw_pwr_wakeup(padapter);
 	}
 
-	rtw_wdev_set_not_indic_disco(pwdev_priv, 0);
+#if (RTW_CFG80211_BLOCK_STA_DISCON_EVENT & RTW_CFG80211_BLOCK_DISCON_WHEN_DISCONNECT)
+	rtw_wdev_set_not_indic_disco(adapter_wdev_data(padapter), 0);
+#endif
 
 	RTW_INFO(FUNC_NDEV_FMT" return 0\n", FUNC_NDEV_ARG(ndev));
 	return 0;
@@ -6797,6 +6817,12 @@ static void rtw_cfg80211_preinit_wiphy(_adapter *adapter, struct wiphy *wiphy)
 								#endif
 #endif
 								;
+#if defined(CONFIG_ANDROID) && !defined(RTW_SINGLE_WIPHY)
+	if (is_primary_adapter(adapter)) {
+		wiphy->interface_modes &= ~(BIT(NL80211_IFTYPE_P2P_GO) | BIT(NL80211_IFTYPE_P2P_CLIENT));
+		RTW_INFO("%s primary- don't set p2p capability\n", __func__);
+	}
+#endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) || defined(COMPAT_KERNEL_RELEASE)
 #ifdef CONFIG_AP_MODE

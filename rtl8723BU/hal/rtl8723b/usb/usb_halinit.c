@@ -1309,11 +1309,8 @@ u32 rtl8723bu_hal_init(PADAPTER padapter)
 #ifdef CONFIG_BT_COEXIST
 			rtw_btcoex_IQKNotify(padapter, _TRUE);
 #endif
-			restore_iqk_rst = (pwrpriv->bips_processing == _TRUE) ? _TRUE : _FALSE;
-			b2Ant = pHalData->EEPROMBluetoothAntNum == Ant_x2 ? _TRUE : _FALSE;
-			halrf_iqk_trigger(&pHalData->odmpriv, restore_iqk_rst);
-			/*phy_iq_calibrate_8723b(padapter, _FALSE, restore_iqk_rst, b2Ant, pHalData->ant_path);*/
-			pHalData->bIQKInitialized = _TRUE;
+
+			pHalData->neediqk_24g= _TRUE;
 #ifdef CONFIG_BT_COEXIST
 			rtw_btcoex_IQKNotify(padapter, _FALSE);
 #endif

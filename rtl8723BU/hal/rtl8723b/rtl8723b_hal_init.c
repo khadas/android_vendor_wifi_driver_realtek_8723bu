@@ -5200,13 +5200,6 @@ u8 SetHwReg8723B(PADAPTER padapter, u8 variable, u8 *val)
 		}
 		break;
 
-	case HW_VAR_DO_IQK:
-		if (*val)
-			pHalData->bNeedIQK = _TRUE;
-		else
-			pHalData->bNeedIQK = _FALSE;
-		break;
-
 	case HW_VAR_DL_RSVD_PAGE:
 #ifdef CONFIG_BT_COEXIST
 		if (check_fwstate(&padapter->mlmepriv, WIFI_AP_STATE) == _TRUE)
