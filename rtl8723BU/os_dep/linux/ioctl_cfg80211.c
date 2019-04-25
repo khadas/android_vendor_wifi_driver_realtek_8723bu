@@ -2763,8 +2763,11 @@ static int rtw_cfg80211_set_wpa_ie(_adapter *padapter, u8 *pie, size_t ielen)
 	{
 		int i;
 		RTW_INFO("set wpa_ie(length:%zu):\n", ielen);
-		for (i = 0; i < ielen; i = i + 8)
-			RTW_INFO("0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x 0x%.2x\n", buf[i], buf[i + 1], buf[i + 2], buf[i + 3], buf[i + 4], buf[i + 5], buf[i + 6], buf[i + 7]);
+		for (i = 0; i < ielen; i++) {
+			RTW_INFO("0x%.2x ", buf[i]);
+			if ((i != 0 && (i + 1) % 8 == 0) || i == (ielen - 1))
+				RTW_INFO("\n");
+		}
 	}
 
 	pos = buf;

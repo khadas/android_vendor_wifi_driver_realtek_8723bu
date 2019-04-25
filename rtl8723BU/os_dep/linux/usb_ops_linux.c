@@ -112,8 +112,20 @@ int usbctrl_vendorreq(struct intf_hdl *pintfhdl, u8 request, u16 value, u16 inde
 				_rtw_memcpy(pdata, pIo_buf,  len);
 			}
 		} else { /* error cases */
+			u32 data = 0;
+			switch (len) {
+				case 1:
+					data = *(u8 *)pdata;
+				break;
+				case 2:
+					data = *(u16 *)pdata;
+				break;
+				default:
+					data = *(u32 *)pdata;
+				break;
+			}
 			RTW_INFO("reg 0x%x, usb %s %u fail, status:%d value=0x%x, vendorreq_times:%d\n"
-				, value, (requesttype == 0x01) ? "read" : "write" , len, status, *(u32 *)pdata, vendorreq_times);
+				, value, (requesttype == 0x01) ? "read" : "write" , len, status, data, vendorreq_times);
 
 			if (status < 0) {
 				if (status == (-ESHUTDOWN)	|| status == -ENODEV)
